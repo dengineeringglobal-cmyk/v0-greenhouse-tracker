@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Pepper Plantation Greenhouse Tracker',
+  description: 'Track pepper harvests, sales and generate reports for your greenhouse plantation.',
   generator: 'v0.app',
   icons: {
     icon: [
