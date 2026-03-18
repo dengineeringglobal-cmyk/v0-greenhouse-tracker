@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Pepper Plantation Greenhouse Tracker',
-  description: 'Track pepper harvests, sales and generate reports for your greenhouse plantation.',
+  title: 'Bell Pepper Farm Monitoring',
+  description: 'Monitor production and harvest records for your bell pepper greenhouse farm.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased bg-[url('/pepper-bg.jpg')] bg-cover bg-fixed bg-green-50">
         {children}
         <Analytics />
       </body>
