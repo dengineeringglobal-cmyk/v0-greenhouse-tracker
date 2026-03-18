@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+// Bell Pepper Farm Management System
 import { Sidebar } from '@/components/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -174,48 +175,6 @@ export default function BellPepperFarmSystem() {
 
   const deleteHarvest = (id: string) => {
     saveHarvestRecords(harvestRecords.filter((hr) => hr.id !== id));
-  };
-    setGreenhouses([...greenhouses, newGreenhouse]);
-    setGreenhouseForm({
-      greenhouseNumber: '',
-      seedVariety: '',
-      plantingDate: '',
-      plantCount: '',
-      fertilizerSchedule: '',
-      irrigationSchedule: '',
-      pestObservation: '',
-    });
-    setGreenhouseErrors({});
-  };
-
-  const addHarvest = () => {
-    const errors = validateHarvest();
-    if (Object.keys(errors).length > 0) {
-      setHarvestErrors(errors);
-      return;
-    }
-
-    const newHarvest: HarvestRecord = {
-      ...harvestForm,
-      id: Date.now().toString(),
-    };
-    setHarvestRecords([...harvestRecords, newHarvest]);
-    setHarvestForm({
-      date: '',
-      greenhouse: '',
-      quantity: '',
-      grade: '',
-      destination: '',
-    });
-    setHarvestErrors({});
-  };
-
-  const deleteGreenhouse = (id: string) => {
-    setGreenhouses(greenhouses.filter((g) => g.id !== id));
-  };
-
-  const deleteHarvest = (id: string) => {
-    setHarvestRecords(harvestRecords.filter((h) => h.id !== id));
   };
 
   const totalHarvest = harvestRecords.reduce(
