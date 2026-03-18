@@ -26,6 +26,8 @@ type HarvestRecord = {
   date: string;
   greenhouse: string;
   harvestKg: string;
+  grade: string;
+  destination: string;
   buyer: string;
   price: string;
   revenue: number;
@@ -43,13 +45,13 @@ type GreenhouseRecord = {
 };
 
 const INITIAL_RECORDS: HarvestRecord[] = [
-  { id: "1", date: "2024-01-05", greenhouse: "GH-12", harvestKg: "950", buyer: "AgriMarket Ltd", price: "850", revenue: 807500 },
-  { id: "2", date: "2024-01-12", greenhouse: "GH-05", harvestKg: "780", buyer: "Pepper World", price: "900", revenue: 702000 },
-  { id: "3", date: "2024-01-19", greenhouse: "GH-01", harvestKg: "280", buyer: "FreshProduce Co.", price: "870", revenue: 243600 },
-  { id: "4", date: "2024-02-02", greenhouse: "GH-03", harvestKg: "510", buyer: "AgriMarket Ltd", price: "880", revenue: 448800 },
-  { id: "5", date: "2024-02-16", greenhouse: "GH-02", harvestKg: "390", buyer: "SpiceGate Nigeria", price: "910", revenue: 354900 },
-  { id: "6", date: "2024-03-01", greenhouse: "GH-01", harvestKg: "460", buyer: "Pepper World", price: "920", revenue: 423200 },
-  { id: "7", date: "2024-03-14", greenhouse: "GH-03", harvestKg: "375", buyer: "FreshProduce Co.", price: "895", revenue: 335625 },
+  { id: "1", date: "2024-01-05", greenhouse: "GH-12", harvestKg: "9500", grade: "A", destination: "Export", buyer: "AgriMarket Ltd", price: "850", revenue: 8075000 },
+  { id: "2", date: "2024-01-12", greenhouse: "GH-05", harvestKg: "7800", grade: "A", destination: "Local Market", buyer: "Pepper World", price: "900", revenue: 7020000 },
+  { id: "3", date: "2024-01-19", greenhouse: "GH-01", harvestKg: "280", grade: "B", destination: "Processing", buyer: "FreshProduce Co.", price: "870", revenue: 243600 },
+  { id: "4", date: "2024-02-02", greenhouse: "GH-03", harvestKg: "510", grade: "A", destination: "Export", buyer: "AgriMarket Ltd", price: "880", revenue: 448800 },
+  { id: "5", date: "2024-02-16", greenhouse: "GH-02", harvestKg: "390", grade: "B", destination: "Local Market", buyer: "SpiceGate Nigeria", price: "910", revenue: 354900 },
+  { id: "6", date: "2024-03-01", greenhouse: "GH-01", harvestKg: "460", grade: "A", destination: "Export", buyer: "Pepper World", price: "920", revenue: 423200 },
+  { id: "7", date: "2024-03-14", greenhouse: "GH-03", harvestKg: "375", grade: "C", destination: "Processing", buyer: "FreshProduce Co.", price: "895", revenue: 335625 },
 ];
 
 const INITIAL_GREENHOUSES: GreenhouseRecord[] = [
@@ -66,6 +68,8 @@ export default function GreenhouseTracker() {
     date: "",
     greenhouse: "",
     harvestKg: "",
+    grade: "",
+    destination: "",
     buyer: "",
     price: "",
   });
@@ -88,6 +92,8 @@ export default function GreenhouseTracker() {
     if (!form.greenhouse) newErrors.greenhouse = "Greenhouse number is required";
     if (!form.harvestKg || isNaN(Number(form.harvestKg)) || Number(form.harvestKg) <= 0)
       newErrors.harvestKg = "Enter a valid harvest weight";
+    if (!form.grade) newErrors.grade = "Grade is required";
+    if (!form.destination) newErrors.destination = "Destination is required";
     if (!form.buyer) newErrors.buyer = "Buyer name is required";
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0)
       newErrors.price = "Enter a valid price";
@@ -107,7 +113,7 @@ export default function GreenhouseTracker() {
       revenue,
     };
     setRecords([newRecord, ...records]);
-    setForm({ date: "", greenhouse: "", harvestKg: "", buyer: "", price: "" });
+    setForm({ date: "", greenhouse: "", harvestKg: "", grade: "", destination: "", buyer: "", price: "" });
     setErrors({});
   };
 
@@ -166,25 +172,29 @@ export default function GreenhouseTracker() {
 
     // Harvest Records sheet
     const harvestData = [
-      ["Date", "Greenhouse", "Harvest (kg)", "Buyer", "Price per kg (₦)", "Revenue (₦)"],
+      ["Date", "Greenhouse", "Harvest (kg)", "Grade", "Destination", "Buyer", "Price per kg (₦)", "Revenue (₦)"],
       ...records.map((r) => [
         r.date,
         r.greenhouse,
         Number(r.harvestKg),
+        r.grade,
+        r.destination,
         r.buyer,
         Number(r.price),
         r.revenue,
       ]),
       [],
-      ["", "", "", "", "Total Harvest (kg):", totalHarvest],
-      ["", "", "", "", "Total Revenue (₦):", totalRevenue],
-      ["", "", "", "", "Avg Price/kg (₦):", Math.round(avgPrice)],
+      ["", "", "", "", "", "", "Total Harvest (kg):", totalHarvest],
+      ["", "", "", "", "", "", "Total Revenue (₦):", totalRevenue],
+      ["", "", "", "", "", "", "Avg Price/kg (₦):", Math.round(avgPrice)],
     ];
 
     const harvestSheet = XLSX.utils.aoa_to_sheet(harvestData);
     harvestSheet["!cols"] = [
       { wch: 14 },
       { wch: 16 },
+      { wch: 14 },
+      { wch: 10 },
       { wch: 14 },
       { wch: 22 },
       { wch: 18 },
@@ -431,6 +441,52 @@ export default function GreenhouseTracker() {
 
                     <div className="grid gap-1.5">
                       <label className="text-sm font-medium text-foreground">
+                        Grade
+                      </label>
+                      <select
+                        value={form.grade}
+                        onChange={(e) =>
+                          setForm({ ...form, grade: e.target.value })
+                        }
+                        className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                          errors.grade ? "border-destructive" : "border-input"
+                        }`}
+                      >
+                        <option value="">Select grade</option>
+                        <option value="A">Grade A (Premium)</option>
+                        <option value="B">Grade B (Standard)</option>
+                        <option value="C">Grade C (Processing)</option>
+                      </select>
+                      {errors.grade && (
+                        <p className="text-xs text-destructive">{errors.grade}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Destination
+                      </label>
+                      <select
+                        value={form.destination}
+                        onChange={(e) =>
+                          setForm({ ...form, destination: e.target.value })
+                        }
+                        className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                          errors.destination ? "border-destructive" : "border-input"
+                        }`}
+                      >
+                        <option value="">Select destination</option>
+                        <option value="Export">Export</option>
+                        <option value="Local Market">Local Market</option>
+                        <option value="Processing">Processing</option>
+                      </select>
+                      {errors.destination && (
+                        <p className="text-xs text-destructive">{errors.destination}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
                         Buyer Name
                       </label>
                       <Input
@@ -446,7 +502,7 @@ export default function GreenhouseTracker() {
                       )}
                     </div>
 
-                    <div className="grid gap-1.5 md:col-span-2">
+                    <div className="grid gap-1.5">
                       <label className="text-sm font-medium text-foreground">
                         Price per kg (₦)
                       </label>
@@ -826,7 +882,7 @@ export default function GreenhouseTracker() {
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+<table className="w-full text-sm">
                           <thead>
                             <tr className="bg-muted border-b border-border">
                               <th className="text-left py-3 px-4 font-semibold text-muted-foreground">
@@ -837,6 +893,12 @@ export default function GreenhouseTracker() {
                               </th>
                               <th className="text-right py-3 px-4 font-semibold text-muted-foreground">
                                 Harvest (kg)
+                              </th>
+                              <th className="text-center py-3 px-4 font-semibold text-muted-foreground">
+                                Grade
+                              </th>
+                              <th className="text-left py-3 px-4 font-semibold text-muted-foreground">
+                                Destination
                               </th>
                               <th className="text-left py-3 px-4 font-semibold text-muted-foreground">
                                 Buyer
@@ -872,6 +934,22 @@ export default function GreenhouseTracker() {
                                 <td className="py-3 px-4 text-right font-medium text-foreground">
                                   {Number(r.harvestKg).toLocaleString()}
                                 </td>
+                                <td className="py-3 px-4 text-center">
+                                  <Badge
+                                    className={`text-xs ${
+                                      r.grade === "A"
+                                        ? "bg-primary text-primary-foreground"
+                                        : r.grade === "B"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                    }`}
+                                  >
+                                    {r.grade}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-4 text-foreground">
+                                  {r.destination}
+                                </td>
                                 <td className="py-3 px-4 text-foreground">
                                   {r.buyer}
                                 </td>
@@ -904,7 +982,7 @@ export default function GreenhouseTracker() {
                               <td className="py-3 px-4 text-right font-bold text-foreground">
                                 {totalHarvest.toLocaleString()} kg
                               </td>
-                              <td colSpan={2} />
+                              <td colSpan={4} />
                               <td className="py-3 px-4 text-right font-bold text-primary">
                                 ₦{totalRevenue.toLocaleString()}
                               </td>
