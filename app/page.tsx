@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,32 @@ export default function BellPepperFarmSystem() {
   const [page, setPage] = useState<Page>('dashboard');
   const [greenhouses, setGreenhouses] = useState<Greenhouse[]>([]);
   const [harvestRecords, setHarvestRecords] = useState<HarvestRecord[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load from localStorage after hydration
+  useEffect(() => {
+    const savedGreenhouses = localStorage.getItem('greenhouses');
+    const savedHarvest = localStorage.getItem('harvestRecords');
+    
+    if (savedGreenhouses) {
+      setGreenhouses(JSON.parse(savedGreenhouses));
+    }
+    if (savedHarvest) {
+      setHarvestRecords(JSON.parse(savedHarvest));
+    }
+    setIsHydrated(true);
+  }, []);
+
+  // Save to localStorage whenever data changes
+  const saveGreenhouses = (data: Greenhouse[]) => {
+    setGreenhouses(data);
+    localStorage.setItem('greenhouses', JSON.stringify(data));
+  };
+
+  const saveHarvestRecords = (data: HarvestRecord[]) => {
+    setHarvestRecords(data);
+    localStorage.setItem('harvestRecords', JSON.stringify(data));
+  };
 
   const [greenhouseForm, setGreenhouseForm] = useState({
     greenhouseNumber: '',
@@ -69,20 +95,30 @@ export default function BellPepperFarmSystem() {
 
   const validateGreenhouse = () => {
     const errors: Record<string, string> = {};
-    if (!greenhouseForm.greenhouseNumber) errors.greenhouseNumber = 'Required';
-    if (!greenhouseForm.seedVariety) errors.seedVariety = 'Required';
-    if (!greenhouseForm.plantingDate) errors.plantingDate = 'Required';
-    if (!greenhouseForm.plantCount) errors.plantCount = 'Required';
+    if (!greenhouseForm.greenhouseNumber) errors.greenhouseNumber = 'Greenhouse number is required';
+    if (!greenhouseForm.seedVariety) errors.seedVariety = 'Seed variety is required';
+    if (!greenhouseForm.plantingDate) errors.plantingDate = 'Planting date is required';
+    if (!greenhouseForm.plantCount) {
+      errors.plantCount = 'Plant count is required';
+    } else if (isNaN(Number(greenhouseForm.plantCount)) || Number(greenhouseForm.plantCount) <= 0) {
+      errors.plantCount = 'Plant count must be a positive number';
+    }
+    if (!greenhouseForm.fertilizerSchedule) errors.fertilizerSchedule = 'Fertilizer schedule is required';
+    if (!greenhouseForm.irrigationSchedule) errors.irrigationSchedule = 'Irrigation schedule is required';
     return errors;
   };
 
   const validateHarvest = () => {
     const errors: Record<string, string> = {};
-    if (!harvestForm.date) errors.date = 'Required';
-    if (!harvestForm.greenhouse) errors.greenhouse = 'Required';
-    if (!harvestForm.quantity) errors.quantity = 'Required';
-    if (!harvestForm.grade) errors.grade = 'Required';
-    if (!harvestForm.destination) errors.destination = 'Required';
+    if (!harvestForm.date) errors.date = 'Harvest date is required';
+    if (!harvestForm.greenhouse) errors.greenhouse = 'Greenhouse is required';
+    if (!harvestForm.quantity) {
+      errors.quantity = 'Quantity is required';
+    } else if (isNaN(Number(harvestForm.quantity)) || Number(harvestForm.quantity) <= 0) {
+      errors.quantity = 'Quantity must be a positive number';
+    }
+    if (!harvestForm.grade) errors.grade = 'Grade is required';
+    if (!harvestForm.destination) errors.destination = 'Destination is required';
     return errors;
   };
 
@@ -97,6 +133,48 @@ export default function BellPepperFarmSystem() {
       ...greenhouseForm,
       id: Date.now().toString(),
     };
+    saveGreenhouses([...greenhouses, newGreenhouse]);
+    setGreenhouseForm({
+      greenhouseNumber: '',
+      seedVariety: '',
+      plantingDate: '',
+      plantCount: '',
+      fertilizerSchedule: '',
+      irrigationSchedule: '',
+      pestObservation: '',
+    });
+    setGreenhouseErrors({});
+  };
+
+  const addHarvest = () => {
+    const errors = validateHarvest();
+    if (Object.keys(errors).length > 0) {
+      setHarvestErrors(errors);
+      return;
+    }
+
+    const newRecord: HarvestRecord = {
+      ...harvestForm,
+      id: Date.now().toString(),
+    };
+    saveHarvestRecords([...harvestRecords, newRecord]);
+    setHarvestForm({
+      date: '',
+      greenhouse: '',
+      quantity: '',
+      grade: '',
+      destination: '',
+    });
+    setHarvestErrors({});
+  };
+
+  const deleteGreenhouse = (id: string) => {
+    saveGreenhouses(greenhouses.filter((gh) => gh.id !== id));
+  };
+
+  const deleteHarvest = (id: string) => {
+    saveHarvestRecords(harvestRecords.filter((hr) => hr.id !== id));
+  };
     setGreenhouses([...greenhouses, newGreenhouse]);
     setGreenhouseForm({
       greenhouseNumber: '',
@@ -148,6 +226,21 @@ export default function BellPepperFarmSystem() {
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
 
+    // Summary sheet
+    const summaryData = [
+      ['Bell Pepper Farm Report'],
+      [`Generated: ${new Date().toLocaleDateString()}`],
+      [],
+      ['Summary Statistics'],
+      ['Total Greenhouses:', greenhouses.length],
+      ['Total Harvest Records:', harvestRecords.length],
+      ['Total Harvest (kg):', totalHarvest],
+      ['Average Harvest per Record (kg):', harvestRecords.length > 0 ? (totalHarvest / harvestRecords.length).toFixed(2) : 0],
+    ];
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    summarySheet['!cols'] = [{ wch: 25 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
     // Greenhouses sheet
     const greenhouseData = [
       ['Greenhouse Number', 'Seed Variety', 'Planting Date', 'Plant Count', 'Fertilizer Schedule', 'Irrigation Schedule', 'Pest Observation'],
@@ -170,9 +263,10 @@ export default function BellPepperFarmSystem() {
     // Harvest sheet
     const harvestData = [
       ['Date', 'Greenhouse', 'Quantity (kg)', 'Grade', 'Destination'],
-      ...harvestRecords.map((h) => [h.date, h.greenhouse, h.quantity, h.grade, h.destination]),
+      ...harvestRecords.map((h) => [h.date, h.greenhouse, Number(h.quantity), h.grade, h.destination]),
       [],
       ['Total Harvest (kg):', '', totalHarvest],
+      ['Average per Record:', '', (totalHarvest / (harvestRecords.length || 1)).toFixed(2)],
     ];
     const harvestSheet = XLSX.utils.aoa_to_sheet(harvestData);
     harvestSheet['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 18 }];
