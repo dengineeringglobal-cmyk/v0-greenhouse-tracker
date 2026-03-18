@@ -16,6 +16,8 @@ import {
   DollarSign,
   Trash2,
   ClipboardList,
+  Activity,
+  Droplet,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -29,9 +31,20 @@ type HarvestRecord = {
   revenue: number;
 };
 
+type GreenhouseRecord = {
+  id: string;
+  greenhouseNumber: string;
+  seedVariety: string;
+  plantingDate: string;
+  plantCount: string;
+  fertilizerSchedule: string;
+  irrigationSchedule: string;
+  pestObservation: string;
+};
+
 const INITIAL_RECORDS: HarvestRecord[] = [
-  { id: "1", date: "2024-01-05", greenhouse: "GH-01", harvestKg: "320", buyer: "AgriMarket Ltd", price: "850", revenue: 272000 },
-  { id: "2", date: "2024-01-12", greenhouse: "GH-02", harvestKg: "410", buyer: "Pepper World", price: "900", revenue: 369000 },
+  { id: "1", date: "2024-01-05", greenhouse: "GH-12", harvestKg: "950", buyer: "AgriMarket Ltd", price: "850", revenue: 807500 },
+  { id: "2", date: "2024-01-12", greenhouse: "GH-05", harvestKg: "780", buyer: "Pepper World", price: "900", revenue: 702000 },
   { id: "3", date: "2024-01-19", greenhouse: "GH-01", harvestKg: "280", buyer: "FreshProduce Co.", price: "870", revenue: 243600 },
   { id: "4", date: "2024-02-02", greenhouse: "GH-03", harvestKg: "510", buyer: "AgriMarket Ltd", price: "880", revenue: 448800 },
   { id: "5", date: "2024-02-16", greenhouse: "GH-02", harvestKg: "390", buyer: "SpiceGate Nigeria", price: "910", revenue: 354900 },
@@ -39,8 +52,16 @@ const INITIAL_RECORDS: HarvestRecord[] = [
   { id: "7", date: "2024-03-14", greenhouse: "GH-03", harvestKg: "375", buyer: "FreshProduce Co.", price: "895", revenue: 335625 },
 ];
 
+const INITIAL_GREENHOUSES: GreenhouseRecord[] = [
+  { id: "1", greenhouseNumber: "GH-12", seedVariety: "Hot Pepper (Scotch Bonnet)", plantingDate: "2023-10-15", plantCount: "1200", fertilizerSchedule: "Weekly NPK", irrigationSchedule: "Daily 6AM & 4PM", pestObservation: "None" },
+  { id: "2", greenhouseNumber: "GH-05", seedVariety: "Bell Pepper", plantingDate: "2023-10-20", plantCount: "950", fertilizerSchedule: "Bi-weekly NPK", irrigationSchedule: "Daily 6AM & 5PM", pestObservation: "Minor aphid activity - treated" },
+  { id: "3", greenhouseNumber: "GH-01", seedVariety: "Cayenne Pepper", plantingDate: "2023-11-01", plantCount: "1100", fertilizerSchedule: "Weekly NPK", irrigationSchedule: "Daily 7AM & 3PM", pestObservation: "None" },
+  { id: "4", greenhouseNumber: "GH-03", seedVariety: "Habanero", plantingDate: "2023-11-05", plantCount: "850", fertilizerSchedule: "Bi-weekly NPK", irrigationSchedule: "Daily 6AM & 4PM", pestObservation: "None" },
+];
+
 export default function GreenhouseTracker() {
   const [records, setRecords] = useState<HarvestRecord[]>(INITIAL_RECORDS);
+  const [greenhouses, setGreenhouses] = useState<GreenhouseRecord[]>(INITIAL_GREENHOUSES);
   const [form, setForm] = useState({
     date: "",
     greenhouse: "",
@@ -48,7 +69,17 @@ export default function GreenhouseTracker() {
     buyer: "",
     price: "",
   });
+  const [monitoringForm, setMonitoringForm] = useState({
+    greenhouseNumber: "",
+    seedVariety: "",
+    plantingDate: "",
+    plantCount: "",
+    fertilizerSchedule: "",
+    irrigationSchedule: "",
+    pestObservation: "",
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [monitoringErrors, setMonitoringErrors] = useState<Record<string, string>>({});
   const printRef = useRef<HTMLDivElement>(null);
 
   const validate = () => {
@@ -84,6 +115,45 @@ export default function GreenhouseTracker() {
     setRecords(records.filter((r) => r.id !== id));
   };
 
+  const validateMonitoring = () => {
+    const newErrors: Record<string, string> = {};
+    if (!monitoringForm.greenhouseNumber) newErrors.greenhouseNumber = "Greenhouse number is required";
+    if (!monitoringForm.seedVariety) newErrors.seedVariety = "Seed variety is required";
+    if (!monitoringForm.plantingDate) newErrors.plantingDate = "Planting date is required";
+    if (!monitoringForm.plantCount || isNaN(Number(monitoringForm.plantCount)) || Number(monitoringForm.plantCount) <= 0)
+      newErrors.plantCount = "Enter a valid plant count";
+    if (!monitoringForm.fertilizerSchedule) newErrors.fertilizerSchedule = "Fertilizer schedule is required";
+    if (!monitoringForm.irrigationSchedule) newErrors.irrigationSchedule = "Irrigation schedule is required";
+    return newErrors;
+  };
+
+  const addGreenhouseRecord = () => {
+    const validationErrors = validateMonitoring();
+    if (Object.keys(validationErrors).length > 0) {
+      setMonitoringErrors(validationErrors);
+      return;
+    }
+    const newRecord: GreenhouseRecord = {
+      ...monitoringForm,
+      id: Date.now().toString(),
+    };
+    setGreenhouses([newRecord, ...greenhouses]);
+    setMonitoringForm({
+      greenhouseNumber: "",
+      seedVariety: "",
+      plantingDate: "",
+      plantCount: "",
+      fertilizerSchedule: "",
+      irrigationSchedule: "",
+      pestObservation: "",
+    });
+    setMonitoringErrors({});
+  };
+
+  const deleteGreenhouseRecord = (id: string) => {
+    setGreenhouses(greenhouses.filter((g) => g.id !== id));
+  };
+
   const totalHarvest = records.reduce((sum, r) => sum + Number(r.harvestKg), 0);
   const totalRevenue = records.reduce((sum, r) => sum + r.revenue, 0);
   const avgPrice =
@@ -92,7 +162,10 @@ export default function GreenhouseTracker() {
       : 0;
 
   const exportToExcel = () => {
-    const worksheetData = [
+    const workbook = XLSX.utils.book_new();
+
+    // Harvest Records sheet
+    const harvestData = [
       ["Date", "Greenhouse", "Harvest (kg)", "Buyer", "Price per kg (₦)", "Revenue (₦)"],
       ...records.map((r) => [
         r.date,
@@ -108,10 +181,8 @@ export default function GreenhouseTracker() {
       ["", "", "", "", "Avg Price/kg (₦):", Math.round(avgPrice)],
     ];
 
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-
-    // Column widths
-    worksheet["!cols"] = [
+    const harvestSheet = XLSX.utils.aoa_to_sheet(harvestData);
+    harvestSheet["!cols"] = [
       { wch: 14 },
       { wch: 16 },
       { wch: 14 },
@@ -119,12 +190,36 @@ export default function GreenhouseTracker() {
       { wch: 18 },
       { wch: 16 },
     ];
+    XLSX.utils.book_append_sheet(workbook, harvestSheet, "Harvest Records");
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Harvest Records");
+    // Greenhouse Monitoring sheet
+    const monitoringData = [
+      ["Greenhouse", "Seed Variety", "Planting Date", "Plant Count", "Fertilizer Schedule", "Irrigation Schedule", "Pest Observation"],
+      ...greenhouses.map((g) => [
+        g.greenhouseNumber,
+        g.seedVariety,
+        g.plantingDate,
+        Number(g.plantCount),
+        g.fertilizerSchedule,
+        g.irrigationSchedule,
+        g.pestObservation,
+      ]),
+    ];
+
+    const monitoringSheet = XLSX.utils.aoa_to_sheet(monitoringData);
+    monitoringSheet["!cols"] = [
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 24 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, monitoringSheet, "Greenhouse Monitoring");
 
     const today = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(workbook, `pepper-harvest-records-${today}.xlsx`);
+    XLSX.writeFile(workbook, `pepper-plantation-${today}.xlsx`);
   };
 
   const handlePrint = () => {
@@ -224,7 +319,16 @@ export default function GreenhouseTracker() {
               <TabsList className="bg-muted border border-border">
                 <TabsTrigger value="add" className="gap-1.5">
                   <PlusCircle className="w-4 h-4" />
-                  Add Record
+                  Add Harvest
+                </TabsTrigger>
+                <TabsTrigger value="monitoring" className="gap-1.5">
+                  <Activity className="w-4 h-4" />
+                  Monitoring
+                  {greenhouses.length > 0 && (
+                    <Badge className="ml-1 bg-accent text-accent-foreground text-xs px-1.5">
+                      {greenhouses.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="records" className="gap-1.5">
                   <ClipboardList className="w-4 h-4" />
@@ -382,6 +486,303 @@ export default function GreenhouseTracker() {
                     <PlusCircle className="w-4 h-4" />
                     Add Harvest Record
                   </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Greenhouse Monitoring Tab */}
+            <TabsContent value="monitoring">
+              <Card className="border-border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base text-foreground">
+                    Add Greenhouse Monitoring Record
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Greenhouse Number
+                      </label>
+                      <Input
+                        placeholder="e.g. GH-01"
+                        value={monitoringForm.greenhouseNumber}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            greenhouseNumber: e.target.value,
+                          })
+                        }
+                        className={
+                          monitoringErrors.greenhouseNumber
+                            ? "border-destructive"
+                            : ""
+                        }
+                      />
+                      {monitoringErrors.greenhouseNumber && (
+                        <p className="text-xs text-destructive">
+                          {monitoringErrors.greenhouseNumber}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Seed Variety
+                      </label>
+                      <Input
+                        placeholder="e.g. Scotch Bonnet"
+                        value={monitoringForm.seedVariety}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            seedVariety: e.target.value,
+                          })
+                        }
+                        className={
+                          monitoringErrors.seedVariety
+                            ? "border-destructive"
+                            : ""
+                        }
+                      />
+                      {monitoringErrors.seedVariety && (
+                        <p className="text-xs text-destructive">
+                          {monitoringErrors.seedVariety}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Planting Date
+                      </label>
+                      <Input
+                        type="date"
+                        value={monitoringForm.plantingDate}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            plantingDate: e.target.value,
+                          })
+                        }
+                        className={
+                          monitoringErrors.plantingDate
+                            ? "border-destructive"
+                            : ""
+                        }
+                      />
+                      {monitoringErrors.plantingDate && (
+                        <p className="text-xs text-destructive">
+                          {monitoringErrors.plantingDate}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Number of Plants
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 1200"
+                        value={monitoringForm.plantCount}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            plantCount: e.target.value,
+                          })
+                        }
+                        className={
+                          monitoringErrors.plantCount
+                            ? "border-destructive"
+                            : ""
+                        }
+                      />
+                      {monitoringErrors.plantCount && (
+                        <p className="text-xs text-destructive">
+                          {monitoringErrors.plantCount}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Fertilizer Schedule
+                      </label>
+                      <Input
+                        placeholder="e.g. Weekly NPK"
+                        value={monitoringForm.fertilizerSchedule}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            fertilizerSchedule: e.target.value,
+                          })
+                        }
+                        className={
+                          monitoringErrors.fertilizerSchedule
+                            ? "border-destructive"
+                            : ""
+                        }
+                      />
+                      {monitoringErrors.fertilizerSchedule && (
+                        <p className="text-xs text-destructive">
+                          {monitoringErrors.fertilizerSchedule}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-foreground">
+                        Irrigation Schedule
+                      </label>
+                      <Input
+                        placeholder="e.g. Daily 6AM & 4PM"
+                        value={monitoringForm.irrigationSchedule}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            irrigationSchedule: e.target.value,
+                          })
+                        }
+                        className={
+                          monitoringErrors.irrigationSchedule
+                            ? "border-destructive"
+                            : ""
+                        }
+                      />
+                      {monitoringErrors.irrigationSchedule && (
+                        <p className="text-xs text-destructive">
+                          {monitoringErrors.irrigationSchedule}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-1.5 md:col-span-2">
+                      <label className="text-sm font-medium text-foreground">
+                        Pest / Disease Observation
+                      </label>
+                      <Input
+                        placeholder="e.g. None / Minor aphid activity - treated"
+                        value={monitoringForm.pestObservation}
+                        onChange={(e) =>
+                          setMonitoringForm({
+                            ...monitoringForm,
+                            pestObservation: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={addGreenhouseRecord}
+                    className="mt-4 w-full bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    Add Greenhouse Record
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Greenhouses List */}
+              <Card className="border-border shadow-sm mt-6">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base text-foreground flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-accent" />
+                      Active Greenhouses
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {greenhouses.length} greenhouse
+                      {greenhouses.length !== 1 ? "s" : ""}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {greenhouses.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                      <Leaf className="w-10 h-10 opacity-40" />
+                      <p className="text-sm">
+                        No greenhouse records yet. Add your first monitoring record.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 p-4">
+                      {greenhouses.map((g) => (
+                        <div
+                          key={g.id}
+                          className="border border-border rounded-lg p-4 bg-card hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <div>
+                              <Badge className="bg-accent/20 text-accent font-mono">
+                                {g.greenhouseNumber}
+                              </Badge>
+                              <p className="text-sm font-medium mt-2 text-foreground">
+                                {g.seedVariety}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => deleteGreenhouseRecord(g.id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              aria-label="Delete record"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Planting Date
+                              </p>
+                              <p className="text-foreground font-medium">
+                                {formatDate(g.plantingDate)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Plant Count
+                              </p>
+                              <p className="text-foreground font-medium">
+                                {Number(g.plantCount).toLocaleString()} plants
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Fertilizer
+                              </p>
+                              <p className="text-foreground font-medium">
+                                {g.fertilizerSchedule}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Droplet className="w-4 h-4 text-accent" />
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Irrigation
+                                </p>
+                                <p className="text-foreground font-medium">
+                                  {g.irrigationSchedule}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {g.pestObservation && (
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <p className="text-xs text-muted-foreground">
+                                Pest / Disease Observation
+                              </p>
+                              <p className="text-sm text-foreground font-medium">
+                                {g.pestObservation}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
