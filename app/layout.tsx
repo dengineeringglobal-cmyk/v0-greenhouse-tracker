@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Bell Pepper Farm Monitoring',
-  description: 'Monitor production and harvest records for your bell pepper greenhouse farm.',
+  title: 'Farm Tracker - Farm Management System',
+  description: 'Comprehensive farm management system for tracking crops, harvests, expenses, and farm operations.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -26,6 +26,11 @@ export const metadata: Metadata = {
       },
     ],
     apple: '/apple-icon.png',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
   },
 }
 
