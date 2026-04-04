@@ -4,7 +4,7 @@ import { Leaf, LayoutDashboard, Warehouse, Activity, Sprout, FileText, Settings,
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/lib/app-context';
 
-export type Page = 'dashboard' | 'farms' | 'crops' | 'activities' | 'harvest' | 'expenses' | 'reports' | 'weather' | 'tips' | 'users' | 'settings';
+export type Page = 'dashboard' | 'farms' | 'fields' | 'crops' | 'activities' | 'harvest' | 'expenses' | 'reports' | 'weather' | 'tips' | 'users' | 'settings';
 
 interface SidebarProps {
   currentPage: Page;
@@ -15,7 +15,8 @@ interface SidebarProps {
 const navItems = [
   { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard, group: 'main' },
   { id: 'farms' as Page, label: 'Farms', icon: Warehouse, group: 'main' },
-  { id: 'crops' as Page, label: 'Crops', icon: Sprout, group: 'main' },
+  { id: 'fields' as Page, label: 'Fields', icon: Sprout, group: 'main' },
+  { id: 'crops' as Page, label: 'Crops', icon: Leaf, group: 'main' },
   { id: 'activities' as Page, label: 'Activities', icon: Activity, group: 'operations' },
   { id: 'harvest' as Page, label: 'Harvest', icon: Leaf, group: 'operations' },
   { id: 'expenses' as Page, label: 'Expenses', icon: DollarSign, group: 'operations' },

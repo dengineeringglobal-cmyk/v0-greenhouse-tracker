@@ -1,11 +1,11 @@
 'use client';
 
 import { useAppContext } from '@/lib/app-context';
-import { getCrops, getHarvests, getExpenses, getActivities } from '@/lib/data';
+import { getCrops, getHarvests, getExpenses, getActivities, calculateFarmFinancials, getMonthlyFinancials } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { Leaf, Sprout, TrendingUp, Activity, DollarSign, Droplets } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Leaf, Sprout } from 'lucide-react';
 
 export function Dashboard() {
   const { currentFarm } = useAppContext();
@@ -29,6 +29,10 @@ export function Dashboard() {
   const totalHarvest = harvests.reduce((sum, h) => sum + h.quantity, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const recentActivities = activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+
+  // Financial metrics
+  const financials = calculateFarmFinancials(currentFarm.id);
+  const monthlyFinancials = getMonthlyFinancials(currentFarm.id);
 
   // Prepare chart data
   const monthlyHarvestData = harvests.reduce(
@@ -61,7 +65,42 @@ export function Dashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${financials.totalRevenue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground mt-1">from harvests</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Expenses</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${financials.totalExpenses.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground mt-1">total spent</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <DollarSign className={`h-4 w-4 ${financials.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${financials.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${financials.netProfit.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">profit margin: {financials.profitMargin.toFixed(1)}%</p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-sm font-medium">Active Crops</CardTitle>
@@ -69,54 +108,87 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeCrops}</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently growing</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Total Harvested</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalHarvest.toFixed(0)}</div>
-            <p className="text-xs text-muted-foreground mt-1">units harvested</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-            <DollarSign className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalExpenses.toFixed(0)}</div>
-            <p className="text-xs text-muted-foreground mt-1">all expenses</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Recent Activities</CardTitle>
-            <Activity className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recentActivities.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">this month</p>
+            <p className="text-xs text-muted-foreground mt-1">currently growing</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Financial Trends */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Financial Trends</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {monthlyFinancials.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyFinancials}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} />
+                  <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} />
+                  <Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No financial data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Expense Breakdown */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Expense Breakdown by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(financials.expensesByCategory).length > 0 ? (
+              <div className="space-y-3">
+                {Object.entries(financials.expensesByCategory)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([category, amount]) => {
+                    const percentage = (amount / financials.totalExpenses) * 100;
+                    return (
+                      <div key={category}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">{category}</span>
+                          <span className="text-muted-foreground">${amount.toFixed(2)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full"
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No expense data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Harvest & Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Harvest Trend */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>Monthly Harvest Trend</CardTitle>
           </CardHeader>
           <CardContent>
             {monthlyHarvestData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={monthlyHarvestData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -126,7 +198,7 @@ export function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
                 No harvest data available
               </div>
             )}
@@ -136,13 +208,13 @@ export function Dashboard() {
         {/* Crops Status */}
         <Card>
           <CardHeader>
-            <CardTitle>Crop Status</CardTitle>
+            <CardTitle>Crop Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             {cropsStatusData.some((d) => d.value > 0) ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={cropsStatusData.filter((d) => d.value > 0)} cx="50%" cy="50%" labelLine={false} label={(entry) => `${entry.name}: ${entry.value}`} outerRadius={80} fill="#8884d8" dataKey="value">
+                  <Pie data={cropsStatusData.filter((d) => d.value > 0)} cx="50%" cy="50%" labelLine={false} label={(entry) => `${entry.name}: ${entry.value}`} outerRadius={70} fill="#8884d8" dataKey="value">
                     {cropsStatusData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -151,7 +223,7 @@ export function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
                 No crop data available
               </div>
             )}

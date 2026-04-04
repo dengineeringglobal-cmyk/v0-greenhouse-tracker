@@ -21,9 +21,23 @@ export interface Farm {
   createdAt: string;
 }
 
+export interface Field {
+  id: string;
+  farmId: string;
+  name: string;
+  location: string;
+  size: number; // in square meters
+  soilType: string;
+  irrigationType: string;
+  status: 'available' | 'in_use' | 'fallow';
+  notes: string;
+  createdAt: string;
+}
+
 export interface Crop {
   id: string;
   farmId: string;
+  fieldId?: string;
   name: string;
   variety: string;
   plantingDate: string;
@@ -93,6 +107,7 @@ const STORAGE_KEYS = {
   users: 'farm_users',
   currentUser: 'farm_current_user',
   farms: 'farm_farms',
+  fields: 'farm_fields',
   crops: 'farm_crops',
   activities: 'farm_activities',
   harvests: 'farm_harvests',
@@ -171,6 +186,55 @@ export function createUser(user: Omit<User, 'id' | 'createdAt'>): User {
   return newUser;
 }
 
+// Authentication functions
+export function authenticateUser(email: string, password: string): User | null {
+  if (typeof window === 'undefined') return null;
+  
+  // For demo purposes, validate against known demo users
+  const demoUsers: Record<string, { password: string; user: User }> = {
+    'admin@farm.com': {
+      password: 'admin123',
+      user: {
+        id: 'admin_001',
+        email: 'admin@farm.com',
+        name: 'Farm Administrator',
+        role: 'admin',
+        farmId: 'farm_001',
+        createdAt: new Date().toISOString(),
+      },
+    },
+    'staff@farm.com': {
+      password: 'staff123',
+      user: {
+        id: 'staff_001',
+        email: 'staff@farm.com',
+        name: 'Farm Staff',
+        role: 'farm_staff',
+        farmId: 'farm_001',
+        createdAt: new Date().toISOString(),
+      },
+    },
+  };
+
+  const demoUser = demoUsers[email];
+  if (demoUser && demoUser.password === password) {
+    setCurrentUser(demoUser.user);
+    return demoUser.user;
+  }
+  
+  return null;
+}
+
+export function logoutUser() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEYS.currentUser);
+}
+
+export function getUsersByFarm(farmId: string): User[] {
+  const users = getAllUsers();
+  return users.filter((u) => u.farmId === farmId);
+}
+
 // Farm functions
 export function getFarms(): Farm[] {
   if (typeof window === 'undefined') return [];
@@ -206,6 +270,55 @@ export function updateFarm(id: string, updates: Partial<Farm>): Farm | null {
     localStorage.setItem(STORAGE_KEYS.farms, JSON.stringify(farms));
   }
   return farm;
+}
+
+// Field functions
+export function getFields(farmId?: string): Field[] {
+  if (typeof window === 'undefined') return [];
+  const fields = localStorage.getItem(STORAGE_KEYS.fields);
+  const allFields = fields ? JSON.parse(fields) : [];
+  return farmId ? allFields.filter((f: Field) => f.farmId === farmId) : allFields;
+}
+
+export function getFieldById(id: string): Field | null {
+  const fields = getFields();
+  return fields.find((f) => f.id === id) || null;
+}
+
+export function createField(field: Omit<Field, 'id' | 'createdAt'>): Field {
+  const newField: Field = {
+    ...field,
+    id: 'field_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const fields = getFields();
+  fields.push(newField);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fields, JSON.stringify(fields));
+  }
+  return newField;
+}
+
+export function updateField(id: string, updates: Partial<Field>): Field | null {
+  const fields = getFields();
+  const field = fields.find((f) => f.id === id);
+  if (!field) return null;
+  Object.assign(field, updates);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fields, JSON.stringify(fields));
+  }
+  return field;
+}
+
+export function deleteField(id: string): boolean {
+  const fields = getFields();
+  const index = fields.findIndex((f) => f.id === id);
+  if (index === -1) return false;
+  fields.splice(index, 1);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fields, JSON.stringify(fields));
+  }
+  return true;
 }
 
 // Crop functions
@@ -397,4 +510,139 @@ export function initializeTips() {
   ];
 
   localStorage.setItem(STORAGE_KEYS.tips, JSON.stringify(defaultTips));
+}
+
+// Financial Analytics Functions
+export interface FinancialMetrics {
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  profitMargin: number;
+  expensesByCategory: Record<string, number>;
+}
+
+export interface MonthlyFinancial {
+  month: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
+}
+
+export function calculateFarmFinancials(farmId: string): FinancialMetrics {
+  const harvests = getHarvests(farmId);
+  const expenses = getExpenses(farmId);
+
+  // Calculate revenue (assuming average price per unit)
+  const avgPricePerUnit = 5; // $5 per unit baseline
+  const totalRevenue = harvests.reduce((sum, h) => sum + h.quantity * avgPricePerUnit, 0);
+
+  // Calculate expenses
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Calculate profit metrics
+  const netProfit = totalRevenue - totalExpenses;
+  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+  // Group expenses by category
+  const expensesByCategory: Record<string, number> = {};
+  expenses.forEach((e) => {
+    expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + e.amount;
+  });
+
+  return {
+    totalRevenue: Math.round(totalRevenue * 100) / 100,
+    totalExpenses: Math.round(totalExpenses * 100) / 100,
+    netProfit: Math.round(netProfit * 100) / 100,
+    profitMargin: Math.round(profitMargin * 100) / 100,
+    expensesByCategory,
+  };
+}
+
+export function getMonthlyFinancials(farmId: string): MonthlyFinancial[] {
+  const harvests = getHarvests(farmId);
+  const expenses = getExpenses(farmId);
+
+  const monthlyData: Record<string, { revenue: number; expenses: number }> = {};
+
+  // Process harvests
+  harvests.forEach((h) => {
+    const month = new Date(h.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    if (!monthlyData[month]) {
+      monthlyData[month] = { revenue: 0, expenses: 0 };
+    }
+    monthlyData[month].revenue += h.quantity * 5; // $5 per unit
+  });
+
+  // Process expenses
+  expenses.forEach((e) => {
+    const month = new Date(e.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    if (!monthlyData[month]) {
+      monthlyData[month] = { revenue: 0, expenses: 0 };
+    }
+    monthlyData[month].expenses += e.amount;
+  });
+
+  // Convert to array and sort by date
+  return Object.entries(monthlyData)
+    .map(([month, data]) => ({
+      month,
+      revenue: Math.round(data.revenue * 100) / 100,
+      expenses: Math.round(data.expenses * 100) / 100,
+      profit: Math.round((data.revenue - data.expenses) * 100) / 100,
+    }))
+    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+}
+
+// Data Isolation & Security Functions
+export interface AccessControl {
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+}
+
+export function canUserAccessFarm(user: User, farmId: string): boolean {
+  // Admins can access all farms
+  if (user.role === 'admin') return true;
+  // Farm staff can only access their assigned farm
+  return user.farmId === farmId;
+}
+
+export function enforceDataIsolation<T extends { farmId: string }>(
+  user: User | null,
+  data: T[]
+): T[] {
+  if (!user) return [];
+  // Admins see all data, others see only their farm's data
+  if (user.role === 'admin') return data;
+  return data.filter((item) => item.farmId === user.farmId);
+}
+
+export function canPerformAction(user: User, action: 'read' | 'write' | 'delete', farmId: string): AccessControl {
+  const hasAccess = canUserAccessFarm(user, farmId);
+
+  return {
+    canRead: hasAccess,
+    canWrite: hasAccess,
+    canDelete: hasAccess && user.role === 'admin', // Only admins can delete
+  };
+}
+
+export function validateCropBelongsToUserFarm(user: User, cropId: string): boolean {
+  const crop = getCropById(cropId);
+  if (!crop) return false;
+  return canUserAccessFarm(user, crop.farmId);
+}
+
+export function validateHarvestBelongsToUserFarm(user: User, harvestId: string): boolean {
+  const harvests = getHarvests();
+  const harvest = harvests.find((h) => h.id === harvestId);
+  if (!harvest) return false;
+  return canUserAccessFarm(user, harvest.farmId);
+}
+
+export function validateExpenseBelongsToUserFarm(user: User, expenseId: string): boolean {
+  const expenses = getExpenses();
+  const expense = expenses.find((e) => e.id === expenseId);
+  if (!expense) return false;
+  return canUserAccessFarm(user, expense.farmId);
 }

@@ -1,15 +1,20 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Farm, initializeData, initializeTips, getCurrentUser, getFarms } from './data';
+import { useRouter } from 'next/navigation';
+import { User, Farm, initializeData, initializeTips, getCurrentUser, getFarms, logoutUser, canUserAccessFarm } from './data';
 
 interface AppContextType {
   currentUser: User | null;
   currentFarm: Farm | null;
   farms: Farm[];
   isInitialized: boolean;
+  isAuthenticated: boolean;
   setCurrentFarm: (farm: Farm) => void;
   refreshFarms: () => void;
+  logout: () => void;
+  canAccessFarm: (farmId: string) => boolean;
+  isAdmin: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -19,6 +24,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentFarm, setCurrentFarm] = useState<Farm | null>(null);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     // Initialize data on mount
@@ -47,6 +53,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setFarms(allFarms);
   };
 
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    setCurrentFarm(null);
+    router.push('/auth/login');
+  };
+
+  const handleCanAccessFarm = (farmId: string) => {
+    if (!currentUser) return false;
+    return canUserAccessFarm(currentUser, farmId);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -54,8 +72,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currentFarm,
         farms,
         isInitialized,
+        isAuthenticated: currentUser !== null,
         setCurrentFarm,
         refreshFarms,
+        logout: handleLogout,
+        canAccessFarm: handleCanAccessFarm,
+        isAdmin: currentUser?.role === 'admin' || false,
       }}
     >
       {children}
