@@ -1,6 +1,6 @@
 'use client';
 
-import { Leaf, LayoutDashboard, Warehouse, Activity, Sprout, FileText, Settings, LogOut, DollarSign, CloudRain, Heart, Droplets, Zap, Bug, LogBook, DollarSignIcon } from 'lucide-react';
+import { Leaf, LayoutDashboard, Warehouse, Activity, Sprout, FileText, Settings, LogOut, DollarSign, CloudRain, Heart, Droplets, Zap, Bug, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/lib/app-context';
 
@@ -27,8 +27,8 @@ const navItems = [
   { id: 'weather' as Page, label: 'Weather', icon: CloudRain, group: 'tools' },
   { id: 'tips' as Page, label: 'Tips', icon: FileText, group: 'tools' },
   { id: 'reports' as Page, label: 'Reports', icon: FileText, group: 'tools' },
-  { id: 'pricing' as Page, label: 'Pricing', icon: DollarSignIcon, group: 'tools' },
-  { id: 'activity-log' as Page, label: 'Activity Log', icon: LogBook, group: 'admin' },
+  { id: 'pricing' as Page, label: 'Pricing', icon: DollarSign, group: 'tools' },
+  { id: 'activity-log' as Page, label: 'Activity Log', icon: BookOpen, group: 'admin' },
   { id: 'users' as Page, label: 'Users', icon: Settings, group: 'admin' },
   { id: 'settings' as Page, label: 'Settings', icon: Settings, group: 'admin' },
 ];
