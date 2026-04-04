@@ -21,9 +21,23 @@ export interface Farm {
   createdAt: string;
 }
 
+export interface Field {
+  id: string;
+  farmId: string;
+  name: string;
+  location: string;
+  size: number; // in square meters
+  soilType: string;
+  irrigationType: string;
+  status: 'available' | 'in_use' | 'fallow';
+  notes: string;
+  createdAt: string;
+}
+
 export interface Crop {
   id: string;
   farmId: string;
+  fieldId?: string;
   name: string;
   variety: string;
   plantingDate: string;
@@ -88,17 +102,90 @@ export interface Tip {
   source: string;
 }
 
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT';
+  module: 'crop' | 'harvest' | 'expense' | 'field' | 'activity' | 'user' | 'auth' | 'farm';
+  recordId?: string;
+  recordName?: string;
+  farmId: string;
+  timestamp: string;
+  details?: string;
+}
+
+export interface CropHealth {
+  id: string;
+  cropId: string;
+  farmId: string;
+  date: string;
+  healthStatus: 'excellent' | 'good' | 'fair' | 'poor';
+  leafColor: string;
+  stemStrength: string;
+  diseaseIndicators: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface IrrigationRecord {
+  id: string;
+  cropId: string;
+  fieldId: string;
+  farmId: string;
+  date: string;
+  duration: number; // in minutes
+  waterAmount: number; // in liters
+  method: 'drip' | 'sprinkler' | 'flood' | 'manual';
+  notes: string;
+  createdAt: string;
+}
+
+export interface FertilizerApplication {
+  id: string;
+  cropId: string;
+  fieldId: string;
+  farmId: string;
+  date: string;
+  fertilizerId: string;
+  fertilizerName: string;
+  amount: number; // in kg
+  type: 'organic' | 'chemical' | 'mixed';
+  notes: string;
+  createdAt: string;
+}
+
+export interface PestControl {
+  id: string;
+  cropId: string;
+  fieldId: string;
+  farmId: string;
+  date: string;
+  pestType: string;
+  treatmentUsed: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  effectiveness: 'pending' | 'effective' | 'partial' | 'ineffective';
+  notes: string;
+  createdAt: string;
+}
+
 // Local Storage Keys
 const STORAGE_KEYS = {
   users: 'farm_users',
   currentUser: 'farm_current_user',
   farms: 'farm_farms',
+  fields: 'farm_fields',
   crops: 'farm_crops',
   activities: 'farm_activities',
   harvests: 'farm_harvests',
   expenses: 'farm_expenses',
   weather: 'farm_weather',
   tips: 'farm_tips',
+  activityLogs: 'farm_activity_logs',
+  cropHealth: 'farm_crop_health',
+  irrigation: 'farm_irrigation_records',
+  fertilizer: 'farm_fertilizer_applications',
+  pestControl: 'farm_pest_control',
 };
 
 // Initialize default data
@@ -171,6 +258,102 @@ export function createUser(user: Omit<User, 'id' | 'createdAt'>): User {
   return newUser;
 }
 
+// Authentication functions
+export function authenticateUser(email: string, password: string): User | null {
+  if (typeof window === 'undefined') return null;
+  
+  // For demo purposes, validate against known demo users
+  const demoUsers: Record<string, { password: string; user: User }> = {
+    'admin@farm.com': {
+      password: 'admin123',
+      user: {
+        id: 'admin_001',
+        email: 'admin@farm.com',
+        name: 'Farm Administrator',
+        role: 'admin',
+        farmId: 'farm_001',
+        createdAt: new Date().toISOString(),
+      },
+    },
+    'staff@farm.com': {
+      password: 'staff123',
+      user: {
+        id: 'staff_001',
+        email: 'staff@farm.com',
+        name: 'Farm Staff',
+        role: 'farm_staff',
+        farmId: 'farm_001',
+        createdAt: new Date().toISOString(),
+      },
+    },
+  };
+
+  const demoUser = demoUsers[email];
+  if (demoUser && demoUser.password === password) {
+    setCurrentUser(demoUser.user);
+    return demoUser.user;
+  }
+  
+  return null;
+}
+
+export function logoutUser() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEYS.currentUser);
+}
+
+export function getUsersByFarm(farmId: string): User[] {
+  const users = getAllUsers();
+  return users.filter((u) => u.farmId === farmId);
+}
+
+export function registerUser(
+  email: string,
+  password: string,
+  name: string,
+  role: 'admin' | 'farm_staff' = 'farm_staff'
+): { success: boolean; message: string; user?: User } {
+  if (typeof window === 'undefined') return { success: false, message: 'Server-side registration not supported' };
+
+  // Validate inputs
+  if (!email || !password || !name) {
+    return { success: false, message: 'Email, password, and name are required' };
+  }
+
+  if (password.length < 6) {
+    return { success: false, message: 'Password must be at least 6 characters' };
+  }
+
+  // Check if user already exists
+  const existingUsers = getAllUsers();
+  if (existingUsers.some((u) => u.email === email)) {
+    return { success: false, message: 'Email already registered' };
+  }
+
+  // Store password in localStorage (in production, this would be hashed server-side)
+  const passwords = JSON.parse(localStorage.getItem('farm_user_passwords') || '{}');
+  passwords[email] = password;
+  localStorage.setItem('farm_user_passwords', JSON.stringify(passwords));
+
+  // Create new user - assign to farm_001 by default
+  const newUser: User = {
+    id: 'user_' + Date.now(),
+    email,
+    name,
+    role,
+    farmId: 'farm_001',
+    createdAt: new Date().toISOString(),
+  };
+
+  const users = getAllUsers();
+  users.push(newUser);
+  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+
+  // Auto-login the new user
+  setCurrentUser(newUser);
+  return { success: true, message: 'Account created successfully', user: newUser };
+}
+
 // Farm functions
 export function getFarms(): Farm[] {
   if (typeof window === 'undefined') return [];
@@ -206,6 +389,55 @@ export function updateFarm(id: string, updates: Partial<Farm>): Farm | null {
     localStorage.setItem(STORAGE_KEYS.farms, JSON.stringify(farms));
   }
   return farm;
+}
+
+// Field functions
+export function getFields(farmId?: string): Field[] {
+  if (typeof window === 'undefined') return [];
+  const fields = localStorage.getItem(STORAGE_KEYS.fields);
+  const allFields = fields ? JSON.parse(fields) : [];
+  return farmId ? allFields.filter((f: Field) => f.farmId === farmId) : allFields;
+}
+
+export function getFieldById(id: string): Field | null {
+  const fields = getFields();
+  return fields.find((f) => f.id === id) || null;
+}
+
+export function createField(field: Omit<Field, 'id' | 'createdAt'>): Field {
+  const newField: Field = {
+    ...field,
+    id: 'field_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const fields = getFields();
+  fields.push(newField);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fields, JSON.stringify(fields));
+  }
+  return newField;
+}
+
+export function updateField(id: string, updates: Partial<Field>): Field | null {
+  const fields = getFields();
+  const field = fields.find((f) => f.id === id);
+  if (!field) return null;
+  Object.assign(field, updates);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fields, JSON.stringify(fields));
+  }
+  return field;
+}
+
+export function deleteField(id: string): boolean {
+  const fields = getFields();
+  const index = fields.findIndex((f) => f.id === id);
+  if (index === -1) return false;
+  fields.splice(index, 1);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fields, JSON.stringify(fields));
+  }
+  return true;
 }
 
 // Crop functions
@@ -397,4 +629,300 @@ export function initializeTips() {
   ];
 
   localStorage.setItem(STORAGE_KEYS.tips, JSON.stringify(defaultTips));
+}
+
+// Financial Analytics Functions
+export interface FinancialMetrics {
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  profitMargin: number;
+  expensesByCategory: Record<string, number>;
+}
+
+export interface MonthlyFinancial {
+  month: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
+}
+
+export function calculateFarmFinancials(farmId: string): FinancialMetrics {
+  const harvests = getHarvests(farmId);
+  const expenses = getExpenses(farmId);
+
+  // Calculate revenue (assuming average price per unit)
+  const avgPricePerUnit = 5; // $5 per unit baseline
+  const totalRevenue = harvests.reduce((sum, h) => sum + h.quantity * avgPricePerUnit, 0);
+
+  // Calculate expenses
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Calculate profit metrics
+  const netProfit = totalRevenue - totalExpenses;
+  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+  // Group expenses by category
+  const expensesByCategory: Record<string, number> = {};
+  expenses.forEach((e) => {
+    expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + e.amount;
+  });
+
+  return {
+    totalRevenue: Math.round(totalRevenue * 100) / 100,
+    totalExpenses: Math.round(totalExpenses * 100) / 100,
+    netProfit: Math.round(netProfit * 100) / 100,
+    profitMargin: Math.round(profitMargin * 100) / 100,
+    expensesByCategory,
+  };
+}
+
+export function getMonthlyFinancials(farmId: string): MonthlyFinancial[] {
+  const harvests = getHarvests(farmId);
+  const expenses = getExpenses(farmId);
+
+  const monthlyData: Record<string, { revenue: number; expenses: number }> = {};
+
+  // Process harvests
+  harvests.forEach((h) => {
+    const month = new Date(h.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    if (!monthlyData[month]) {
+      monthlyData[month] = { revenue: 0, expenses: 0 };
+    }
+    monthlyData[month].revenue += h.quantity * 5; // $5 per unit
+  });
+
+  // Process expenses
+  expenses.forEach((e) => {
+    const month = new Date(e.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    if (!monthlyData[month]) {
+      monthlyData[month] = { revenue: 0, expenses: 0 };
+    }
+    monthlyData[month].expenses += e.amount;
+  });
+
+  // Convert to array and sort by date
+  return Object.entries(monthlyData)
+    .map(([month, data]) => ({
+      month,
+      revenue: Math.round(data.revenue * 100) / 100,
+      expenses: Math.round(data.expenses * 100) / 100,
+      profit: Math.round((data.revenue - data.expenses) * 100) / 100,
+    }))
+    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+}
+
+// Data Isolation & Security Functions
+export interface AccessControl {
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+}
+
+export function canUserAccessFarm(user: User, farmId: string): boolean {
+  // Admins can access all farms
+  if (user.role === 'admin') return true;
+  // Farm staff can only access their assigned farm
+  return user.farmId === farmId;
+}
+
+export function enforceDataIsolation<T extends { farmId: string }>(
+  user: User | null,
+  data: T[]
+): T[] {
+  if (!user) return [];
+  // Admins see all data, others see only their farm's data
+  if (user.role === 'admin') return data;
+  return data.filter((item) => item.farmId === user.farmId);
+}
+
+export function canPerformAction(user: User, action: 'read' | 'write' | 'delete', farmId: string): AccessControl {
+  const hasAccess = canUserAccessFarm(user, farmId);
+
+  return {
+    canRead: hasAccess,
+    canWrite: hasAccess,
+    canDelete: hasAccess && user.role === 'admin', // Only admins can delete
+  };
+}
+
+export function validateCropBelongsToUserFarm(user: User, cropId: string): boolean {
+  const crop = getCropById(cropId);
+  if (!crop) return false;
+  return canUserAccessFarm(user, crop.farmId);
+}
+
+export function validateHarvestBelongsToUserFarm(user: User, harvestId: string): boolean {
+  const harvests = getHarvests();
+  const harvest = harvests.find((h) => h.id === harvestId);
+  if (!harvest) return false;
+  return canUserAccessFarm(user, harvest.farmId);
+}
+
+export function validateExpenseBelongsToUserFarm(user: User, expenseId: string): boolean {
+  const expenses = getExpenses();
+  const expense = expenses.find((e) => e.id === expenseId);
+  if (!expense) return false;
+  return canUserAccessFarm(user, expense.farmId);
+}
+
+// Activity Logging Functions
+export function logActivity(
+  user: User | null,
+  action: ActivityLog['action'],
+  module: ActivityLog['module'],
+  farmId: string,
+  recordId?: string,
+  recordName?: string,
+  details?: string
+): ActivityLog | null {
+  if (typeof window === 'undefined') return null;
+  if (!user) return null;
+
+  const log: ActivityLog = {
+    id: 'log_' + Date.now(),
+    userId: user.id,
+    userName: user.name,
+    action,
+    module,
+    recordId,
+    recordName,
+    farmId,
+    timestamp: new Date().toISOString(),
+    details,
+  };
+
+  const logs = getActivityLogs();
+  logs.push(log);
+  localStorage.setItem(STORAGE_KEYS.activityLogs, JSON.stringify(logs));
+  return log;
+}
+
+export function getActivityLogs(farmId?: string): ActivityLog[] {
+  if (typeof window === 'undefined') return [];
+  const logs = localStorage.getItem(STORAGE_KEYS.activityLogs);
+  const allLogs = logs ? JSON.parse(logs) : [];
+  return farmId ? allLogs.filter((l: ActivityLog) => l.farmId === farmId) : allLogs;
+}
+
+export function getActivityLogsByUser(userId: string): ActivityLog[] {
+  const logs = getActivityLogs();
+  return logs.filter((l) => l.userId === userId);
+}
+
+export function getActivityLogsByModule(module: ActivityLog['module']): ActivityLog[] {
+  const logs = getActivityLogs();
+  return logs.filter((l) => l.module === module);
+}
+
+export function clearActivityLogs(): boolean {
+  if (typeof window === 'undefined') return false;
+  localStorage.setItem(STORAGE_KEYS.activityLogs, JSON.stringify([]));
+  return true;
+}
+
+// Crop Health Functions
+export function getCropHealthRecords(cropId?: string, farmId?: string): CropHealth[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.cropHealth);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: CropHealth) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createCropHealth(health: Omit<CropHealth, 'id' | 'createdAt'>): CropHealth {
+  const newRecord: CropHealth = {
+    ...health,
+    id: 'health_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getCropHealthRecords();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.cropHealth, JSON.stringify(records));
+  }
+  return newRecord;
+}
+
+// Irrigation Functions
+export function getIrrigationRecords(cropId?: string, farmId?: string): IrrigationRecord[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.irrigation);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: IrrigationRecord) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createIrrigationRecord(record: Omit<IrrigationRecord, 'id' | 'createdAt'>): IrrigationRecord {
+  const newRecord: IrrigationRecord = {
+    ...record,
+    id: 'irr_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getIrrigationRecords();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.irrigation, JSON.stringify(records));
+  }
+  return newRecord;
+}
+
+// Fertilizer Functions
+export function getFertilizerApplications(cropId?: string, farmId?: string): FertilizerApplication[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.fertilizer);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: FertilizerApplication) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createFertilizerApplication(
+  app: Omit<FertilizerApplication, 'id' | 'createdAt'>
+): FertilizerApplication {
+  const newRecord: FertilizerApplication = {
+    ...app,
+    id: 'fert_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getFertilizerApplications();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fertilizer, JSON.stringify(records));
+  }
+  return newRecord;
+}
+
+// Pest Control Functions
+export function getPestControlRecords(cropId?: string, farmId?: string): PestControl[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.pestControl);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: PestControl) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createPestControl(record: Omit<PestControl, 'id' | 'createdAt'>): PestControl {
+  const newRecord: PestControl = {
+    ...record,
+    id: 'pest_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getPestControlRecords();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.pestControl, JSON.stringify(records));
+  }
+  return newRecord;
 }
