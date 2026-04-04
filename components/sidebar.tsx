@@ -1,10 +1,10 @@
 'use client';
 
-import { Leaf, LayoutDashboard, Warehouse, Activity, Sprout, FileText, Settings, LogOut, DollarSign, CloudRain } from 'lucide-react';
+import { Leaf, LayoutDashboard, Warehouse, Activity, Sprout, FileText, Settings, LogOut, DollarSign, CloudRain, Heart, Droplets, Zap, Bug, LogBook, DollarSignIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/lib/app-context';
 
-export type Page = 'dashboard' | 'farms' | 'fields' | 'crops' | 'activities' | 'harvest' | 'expenses' | 'reports' | 'weather' | 'tips' | 'users' | 'settings';
+export type Page = 'dashboard' | 'farms' | 'fields' | 'crops' | 'activities' | 'harvest' | 'expenses' | 'reports' | 'weather' | 'tips' | 'crop-health' | 'irrigation' | 'fertilizer' | 'pest-control' | 'activity-log' | 'pricing' | 'users' | 'settings';
 
 interface SidebarProps {
   currentPage: Page;
@@ -20,9 +20,15 @@ const navItems = [
   { id: 'activities' as Page, label: 'Activities', icon: Activity, group: 'operations' },
   { id: 'harvest' as Page, label: 'Harvest', icon: Leaf, group: 'operations' },
   { id: 'expenses' as Page, label: 'Expenses', icon: DollarSign, group: 'operations' },
+  { id: 'crop-health' as Page, label: 'Crop Health', icon: Heart, group: 'monitoring' },
+  { id: 'irrigation' as Page, label: 'Irrigation', icon: Droplets, group: 'monitoring' },
+  { id: 'fertilizer' as Page, label: 'Fertilizer', icon: Zap, group: 'monitoring' },
+  { id: 'pest-control' as Page, label: 'Pest Control', icon: Bug, group: 'monitoring' },
   { id: 'weather' as Page, label: 'Weather', icon: CloudRain, group: 'tools' },
   { id: 'tips' as Page, label: 'Tips', icon: FileText, group: 'tools' },
   { id: 'reports' as Page, label: 'Reports', icon: FileText, group: 'tools' },
+  { id: 'pricing' as Page, label: 'Pricing', icon: DollarSignIcon, group: 'tools' },
+  { id: 'activity-log' as Page, label: 'Activity Log', icon: LogBook, group: 'admin' },
   { id: 'users' as Page, label: 'Users', icon: Settings, group: 'admin' },
   { id: 'settings' as Page, label: 'Settings', icon: Settings, group: 'admin' },
 ];
@@ -30,6 +36,7 @@ const navItems = [
 const groupLabels = {
   main: 'Main',
   operations: 'Operations',
+  monitoring: 'Farm Monitoring',
   tools: 'Tools',
   admin: 'Admin',
 };

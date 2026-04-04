@@ -102,6 +102,73 @@ export interface Tip {
   source: string;
 }
 
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT';
+  module: 'crop' | 'harvest' | 'expense' | 'field' | 'activity' | 'user' | 'auth' | 'farm';
+  recordId?: string;
+  recordName?: string;
+  farmId: string;
+  timestamp: string;
+  details?: string;
+}
+
+export interface CropHealth {
+  id: string;
+  cropId: string;
+  farmId: string;
+  date: string;
+  healthStatus: 'excellent' | 'good' | 'fair' | 'poor';
+  leafColor: string;
+  stemStrength: string;
+  diseaseIndicators: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface IrrigationRecord {
+  id: string;
+  cropId: string;
+  fieldId: string;
+  farmId: string;
+  date: string;
+  duration: number; // in minutes
+  waterAmount: number; // in liters
+  method: 'drip' | 'sprinkler' | 'flood' | 'manual';
+  notes: string;
+  createdAt: string;
+}
+
+export interface FertilizerApplication {
+  id: string;
+  cropId: string;
+  fieldId: string;
+  farmId: string;
+  date: string;
+  fertilizerId: string;
+  fertilizerName: string;
+  amount: number; // in kg
+  type: 'organic' | 'chemical' | 'mixed';
+  notes: string;
+  createdAt: string;
+}
+
+export interface PestControl {
+  id: string;
+  cropId: string;
+  fieldId: string;
+  farmId: string;
+  date: string;
+  pestType: string;
+  treatmentUsed: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  effectiveness: 'pending' | 'effective' | 'partial' | 'ineffective';
+  notes: string;
+  createdAt: string;
+}
+
 // Local Storage Keys
 const STORAGE_KEYS = {
   users: 'farm_users',
@@ -114,6 +181,11 @@ const STORAGE_KEYS = {
   expenses: 'farm_expenses',
   weather: 'farm_weather',
   tips: 'farm_tips',
+  activityLogs: 'farm_activity_logs',
+  cropHealth: 'farm_crop_health',
+  irrigation: 'farm_irrigation_records',
+  fertilizer: 'farm_fertilizer_applications',
+  pestControl: 'farm_pest_control',
 };
 
 // Initialize default data
@@ -692,4 +764,165 @@ export function validateExpenseBelongsToUserFarm(user: User, expenseId: string):
   const expense = expenses.find((e) => e.id === expenseId);
   if (!expense) return false;
   return canUserAccessFarm(user, expense.farmId);
+}
+
+// Activity Logging Functions
+export function logActivity(
+  user: User | null,
+  action: ActivityLog['action'],
+  module: ActivityLog['module'],
+  farmId: string,
+  recordId?: string,
+  recordName?: string,
+  details?: string
+): ActivityLog | null {
+  if (typeof window === 'undefined') return null;
+  if (!user) return null;
+
+  const log: ActivityLog = {
+    id: 'log_' + Date.now(),
+    userId: user.id,
+    userName: user.name,
+    action,
+    module,
+    recordId,
+    recordName,
+    farmId,
+    timestamp: new Date().toISOString(),
+    details,
+  };
+
+  const logs = getActivityLogs();
+  logs.push(log);
+  localStorage.setItem(STORAGE_KEYS.activityLogs, JSON.stringify(logs));
+  return log;
+}
+
+export function getActivityLogs(farmId?: string): ActivityLog[] {
+  if (typeof window === 'undefined') return [];
+  const logs = localStorage.getItem(STORAGE_KEYS.activityLogs);
+  const allLogs = logs ? JSON.parse(logs) : [];
+  return farmId ? allLogs.filter((l: ActivityLog) => l.farmId === farmId) : allLogs;
+}
+
+export function getActivityLogsByUser(userId: string): ActivityLog[] {
+  const logs = getActivityLogs();
+  return logs.filter((l) => l.userId === userId);
+}
+
+export function getActivityLogsByModule(module: ActivityLog['module']): ActivityLog[] {
+  const logs = getActivityLogs();
+  return logs.filter((l) => l.module === module);
+}
+
+export function clearActivityLogs(): boolean {
+  if (typeof window === 'undefined') return false;
+  localStorage.setItem(STORAGE_KEYS.activityLogs, JSON.stringify([]));
+  return true;
+}
+
+// Crop Health Functions
+export function getCropHealthRecords(cropId?: string, farmId?: string): CropHealth[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.cropHealth);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: CropHealth) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createCropHealth(health: Omit<CropHealth, 'id' | 'createdAt'>): CropHealth {
+  const newRecord: CropHealth = {
+    ...health,
+    id: 'health_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getCropHealthRecords();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.cropHealth, JSON.stringify(records));
+  }
+  return newRecord;
+}
+
+// Irrigation Functions
+export function getIrrigationRecords(cropId?: string, farmId?: string): IrrigationRecord[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.irrigation);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: IrrigationRecord) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createIrrigationRecord(record: Omit<IrrigationRecord, 'id' | 'createdAt'>): IrrigationRecord {
+  const newRecord: IrrigationRecord = {
+    ...record,
+    id: 'irr_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getIrrigationRecords();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.irrigation, JSON.stringify(records));
+  }
+  return newRecord;
+}
+
+// Fertilizer Functions
+export function getFertilizerApplications(cropId?: string, farmId?: string): FertilizerApplication[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.fertilizer);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: FertilizerApplication) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createFertilizerApplication(
+  app: Omit<FertilizerApplication, 'id' | 'createdAt'>
+): FertilizerApplication {
+  const newRecord: FertilizerApplication = {
+    ...app,
+    id: 'fert_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getFertilizerApplications();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.fertilizer, JSON.stringify(records));
+  }
+  return newRecord;
+}
+
+// Pest Control Functions
+export function getPestControlRecords(cropId?: string, farmId?: string): PestControl[] {
+  if (typeof window === 'undefined') return [];
+  const records = localStorage.getItem(STORAGE_KEYS.pestControl);
+  const allRecords = records ? JSON.parse(records) : [];
+  return allRecords.filter((r: PestControl) => {
+    if (cropId && r.cropId !== cropId) return false;
+    if (farmId && r.farmId !== farmId) return false;
+    return true;
+  });
+}
+
+export function createPestControl(record: Omit<PestControl, 'id' | 'createdAt'>): PestControl {
+  const newRecord: PestControl = {
+    ...record,
+    id: 'pest_' + Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+  const records = getPestControlRecords();
+  records.push(newRecord);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.pestControl, JSON.stringify(records));
+  }
+  return newRecord;
 }

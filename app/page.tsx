@@ -14,6 +14,12 @@ import { ExpensesPage } from '@/components/expenses';
 import { AdvancedReportsPage } from '@/components/advanced-reports';
 import { WeatherTipsPage } from '@/components/weather-tips';
 import { UsersPage, SettingsPage } from '@/components/users-settings';
+import { CropHealthPage } from '@/components/crop-health';
+import { IrrigationPage } from '@/components/irrigation';
+import { FertilizerPage } from '@/components/fertilizer';
+import { PestControlPage } from '@/components/pest-control';
+import { ActivityLogPage } from '@/components/activity-log';
+import { PricingPage } from '@/components/pricing';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -42,12 +48,24 @@ function AppContent() {
         return <HarvestPage />;
       case 'expenses':
         return <ExpensesPage />;
+      case 'crop-health':
+        return <CropHealthPage />;
+      case 'irrigation':
+        return <IrrigationPage />;
+      case 'fertilizer':
+        return <FertilizerPage />;
+      case 'pest-control':
+        return <PestControlPage />;
       case 'weather':
         return <WeatherTipsPage />;
       case 'tips':
         return <WeatherTipsPage />;
       case 'reports':
         return <AdvancedReportsPage />;
+      case 'pricing':
+        return <PricingPage />;
+      case 'activity-log':
+        return <ActivityLogPage />;
       case 'users':
         return <UsersPage />;
       case 'settings':

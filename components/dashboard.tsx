@@ -34,6 +34,13 @@ export function Dashboard() {
   const financials = calculateFarmFinancials(currentFarm.id);
   const monthlyFinancials = getMonthlyFinancials(currentFarm.id);
 
+  // Calculate cost per unit
+  const totalHarvestUnits = harvests.reduce((sum, h) => sum + h.quantity, 0);
+  const costPerUnit = totalHarvestUnits > 0 ? financials.totalExpenses / totalHarvestUnits : 0;
+
+  // Calculate profit per unit
+  const profitPerUnit = totalHarvestUnits > 0 ? financials.netProfit / totalHarvestUnits : 0;
+
   // Prepare chart data
   const monthlyHarvestData = harvests.reduce(
     (acc, h) => {
@@ -64,7 +71,7 @@ export function Dashboard() {
         <p className="text-muted-foreground mt-1">{currentFarm.name}</p>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Metrics - Primary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
@@ -73,7 +80,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${financials.totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground mt-1">from harvests</p>
+            <p className="text-xs text-muted-foreground mt-1">{totalHarvestUnits} units harvested</p>
           </CardContent>
         </Card>
 
@@ -97,7 +104,7 @@ export function Dashboard() {
             <div className={`text-2xl font-bold ${financials.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ${financials.netProfit.toFixed(2)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">profit margin: {financials.profitMargin.toFixed(1)}%</p>
+            <p className="text-xs text-muted-foreground mt-1">margin: {financials.profitMargin.toFixed(1)}%</p>
           </CardContent>
         </Card>
 
@@ -109,6 +116,44 @@ export function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{activeCrops}</div>
             <p className="text-xs text-muted-foreground mt-1">currently growing</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Key Metrics - Advanced */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Cost Per Unit</CardTitle>
+            <DollarSign className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${costPerUnit.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground mt-1">per harvest unit</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Profit Per Unit</CardTitle>
+            <TrendingUp className={`h-4 w-4 ${profitPerUnit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${profitPerUnit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${profitPerUnit.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">net profit per unit</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Total Harvest</CardTitle>
+            <Leaf className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalHarvestUnits.toFixed(0)}</div>
+            <p className="text-xs text-muted-foreground mt-1">units harvested</p>
           </CardContent>
         </Card>
       </div>
