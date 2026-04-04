@@ -235,6 +235,53 @@ export function getUsersByFarm(farmId: string): User[] {
   return users.filter((u) => u.farmId === farmId);
 }
 
+export function registerUser(
+  email: string,
+  password: string,
+  name: string,
+  role: 'admin' | 'farm_staff' = 'farm_staff'
+): { success: boolean; message: string; user?: User } {
+  if (typeof window === 'undefined') return { success: false, message: 'Server-side registration not supported' };
+
+  // Validate inputs
+  if (!email || !password || !name) {
+    return { success: false, message: 'Email, password, and name are required' };
+  }
+
+  if (password.length < 6) {
+    return { success: false, message: 'Password must be at least 6 characters' };
+  }
+
+  // Check if user already exists
+  const existingUsers = getAllUsers();
+  if (existingUsers.some((u) => u.email === email)) {
+    return { success: false, message: 'Email already registered' };
+  }
+
+  // Store password in localStorage (in production, this would be hashed server-side)
+  const passwords = JSON.parse(localStorage.getItem('farm_user_passwords') || '{}');
+  passwords[email] = password;
+  localStorage.setItem('farm_user_passwords', JSON.stringify(passwords));
+
+  // Create new user - assign to farm_001 by default
+  const newUser: User = {
+    id: 'user_' + Date.now(),
+    email,
+    name,
+    role,
+    farmId: 'farm_001',
+    createdAt: new Date().toISOString(),
+  };
+
+  const users = getAllUsers();
+  users.push(newUser);
+  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+
+  // Auto-login the new user
+  setCurrentUser(newUser);
+  return { success: true, message: 'Account created successfully', user: newUser };
+}
+
 // Farm functions
 export function getFarms(): Farm[] {
   if (typeof window === 'undefined') return [];

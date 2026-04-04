@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { AppProvider, useAppContext } from '@/lib/app-context';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAppContext } from '@/lib/app-context';
 import { Sidebar, type Page } from '@/components/sidebar';
 import { Dashboard } from '@/components/dashboard';
 import { FarmsPage } from '@/components/farms';
@@ -16,7 +17,14 @@ import { UsersPage, SettingsPage } from '@/components/users-settings';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const { currentUser, logout } = useAppContext();
+  const { currentUser, logout, isInitialized } = useAppContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isInitialized && !currentUser) {
+      router.push('/auth/login');
+    }
+  }, [isInitialized, currentUser, router]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -49,10 +57,7 @@ function AppContent() {
     }
   };
 
-  if (!currentUser) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login';
-    }
+  if (!isInitialized || !currentUser) {
     return null;
   }
 
@@ -60,16 +65,12 @@ function AppContent() {
     <div className="flex h-screen bg-background">
       <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} onLogout={logout} />
       <main className="flex-1 overflow-auto">
-        <div className="p-8 max-w-7xl mx-auto">{renderPage()}</div>
+        <div className="p-6 space-y-6">{renderPage()}</div>
       </main>
     </div>
   );
 }
 
-export default function Page() {
-  return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  );
+export default function Home() {
+  return <AppContent />;
 }
