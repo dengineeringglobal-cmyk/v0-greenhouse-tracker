@@ -57,7 +57,6 @@ function AppContent() {
       case 'pest-control':
         return <PestControlPage />;
       case 'weather':
-        return <WeatherTipsPage />;
       case 'tips':
         return <WeatherTipsPage />;
       case 'reports':
